@@ -206,7 +206,7 @@ function( add_ACME_target TargetName MainSourceFile )
 	#	Step #3: create the dependency target, make give files dependent
 	#
 		add_custom_target( ${TargetName} DEPENDS ${ACME_OUTPUTS} SOURCES ${ACME_SOURCES} 
-			COMMENT "ACME_target '${TargetName}': assemble ${MainSourceFile}" )
+			COMMENT "ACME_target '${TargetName}': assembled ${MainSourceFile}" )
 		# treat given dependencies directly
 		if ( DEFINED ACME_OBJECT_DEPS OR DEFINED ACME_SYMBOL_DEPS )
 			message( STATUS "=> updating dependencies of dependent files..." )
