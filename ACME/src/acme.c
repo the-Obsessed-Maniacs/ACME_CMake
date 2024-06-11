@@ -238,7 +238,8 @@ static void save_output_file(void)
 	}
 	// show output filename _now_ because I do not want to massage it into
 	// every possible perror() call.
-	printf("Writing output file \"%s\".\n", config.output_filename);
+	if ( config.process_verbosity )
+        printf("Writing output file \"%s\".\n", config.output_filename);
 
 	// get memory pointer, block size and load address
 	output_get_result(&body, &amount, &loadaddr);
@@ -301,29 +302,29 @@ static void save_output_file(void)
 		}
 	}
 	if (amount) {
-        int res;
+        boolean bad;
         if ( config.outfile_format != OUTFILE_FORMAT_HEX )
-            res = fwrite(body, amount, 1, fd);
+            bad = (fwrite(body, amount, 1, fd) != 1);
         else
         {
             // Hex-Listing: this is a textual output format, well suited
             // for object file inclusion in higher language source files.
-            res = fprintf_s(fd, "/*\n\tACME-HEXlisting of '%s'\n*/\n", input_now->plat_pathref_filename );
-            if ( res )
+            bad = fprintf_s(fd, "/*\n\tACME-HEXlisting of '%s'\n*/\n", toplevel_sources_plat[0] ) < 0;
+            if ( !bad )
             {
                 int i = 0;
                 while (i < amount)
                 {
-                    res = fprintf_s(fd, "%s%#02hhx%s",
+                    bad = fprintf_s(fd, "%s%#02.2hhx%s",
                         (i % 16 == 0 ? "\n" : ""),
                         body[i],
-                        (i < amount - 1 ? "," : ""));
-                    if (res) ++i;
-                    else break;
+                        (i < amount - 1 ? "," : "") ) < 0;
+                    if ( bad )  break;
+                    else        ++i;
                 }
             }
         }
-        if( res != 1 ) {
+        if( bad ) {
 			perror("Error: Cannot write to output file");
 			exit(ACME_finalize(EXIT_FAILURE));
 		}
