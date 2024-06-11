@@ -309,14 +309,21 @@ static void save_output_file(void)
         {
             // Hex-Listing: this is a textual output format, well suited
             // for object file inclusion in higher language source files.
-            bad = fprintf_s(fd, "/*\n\tACME-HEXlisting of '%s'\n*/\n", toplevel_sources_plat[0] ) < 0;
+            //  ->  for a header we need the primary source file name,
+            //      preferrably as filename, pathless...
+            const char* fn = toplevel_sources_plat[0];
+            int i = 0;
+            while (fn[i])   // do till end of name -> advance on each separator find.
+                if ((fn[i] == '\\' || fn[i] == '/') && fn[i + 1]) fn += i+1, i = 0;
+                else ++i;
+            bad = fprintf_s(fd, "/*\n\tACME-HEXlisting of '%s'\n*/\n", fn ) < 0;
             if ( !bad )
             {
                 int i = 0;
                 while (i < amount)
                 {
-                    bad = fprintf_s(fd, "%s%#02.2hhx%s",
-                        (i % 16 == 0 ? "\n" : ""),
+                    bad = fprintf_s(fd, "%s0x%02.2hhx%s",
+                        (i % 16 == 0 ? "\n" : " "),
                         body[i],
                         (i < amount - 1 ? "," : "") ) < 0;
                     if ( bad )  break;
