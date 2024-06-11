@@ -1,0 +1,2 @@
+	*=$1000
+	b = &*	; -> "Un-pseudopc operator '&' has no !pseudopc context."
