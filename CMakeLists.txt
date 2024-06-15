@@ -36,16 +36,16 @@ set( acme_srcs
 #	platform specifics:
 #		I don't really know if I handle this right.  But
 #		this works for me at least. (Yeah, right, Windows host...)
-if ( CMAKE_SYSTEM_NAME MATCHES "DOS" ) 
-	message( "DOS-build - Makefiles did not differ, should work.")
+if ( CMAKE_SYSTEM_NAME MATCHES ".*DOS.*" ) 
+	message( AUTHOR_WARNING "DOS-build - Makefiles did not differ, should work.")
 elseif( MINGW )	
 	list( APPEND acme_srcs		_dos.h		 )
-elseif( CMAKE_SYSTEM_NAME MATCHES "RISCos" )
-	message( "RISCos-build - Makefiles did not differ, should work.")
+elseif( CMAKE_SYSTEM_NAME MATCHES ".*RISCos.*" )
+	message( AUTHOR_WARNING "RISCos-build - Makefiles did not differ, should work.")
 elseif( CMAKE_SYSTEM_NAME MATCHES ".*AMIGA.*" )
 	list( APPEND acme_srcs		_amiga.h	_amiga.c )
 elseif( NOT WIN32 AND NOT APPLE AND NOT LINUX AND NOT BSD )
-	message( "weird-SYSTEM-build - we don't know if this'll work...")
+	message( AUTHOR_WARNING "weird-SYSTEM-build - we don't know if this'll work...")
 	list( APPEND acme_srcs		_std.h		_std.c )
 endif()
 list( TRANSFORM acme_srcs PREPEND "ACME/src/" )
@@ -148,23 +148,42 @@ install( FILES
 #
 # CPack configuration
 include( InstallRequiredSystemLibraries )
-#set( CPACK_PACKAGE_VERSION_MAJOR ${XA65_VERSION_MAJOR} )
-#set( CPACK_PACKAGE_VERSION_MINOR ${XA65_VERSION_MINOR} )
-#set( CPACK_PACKAGE_VERSION_PATCH ${XA65_VERSION_LEVEL} )
+set( CPACK_PACKAGE_VERSION_MAJOR ${ACME_VERSION_MAJOR} )
+set( CPACK_PACKAGE_VERSION_MINOR ${ACME_VERSION_MINOR} )
 #set( CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ReadMe.1st" )
 #set( CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/Copying" )
 #set( CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/ReadMe.1st" )
 set( CPACK_PACKAGE_INSTALL_DIRECTORY "ACME" )
-#set( CPACK_PACKAGE_EXECUTABLES "" )
+set( CPACK_PACKAGE_EXECUTABLES acme toacme )
 #set( CPACK_DESKTOP_SHORTCUTS "" )
 #set( CPACK_STARTUP_SHORTCUTS "" )
 #if( WIN32 )
 #	# special NSIS / Windows options the creator likes
 #	set( CPACK_NSIS_MODIFY_PATH off )
-#	if ( XA65_PACKAGE_CREATOR_MODE )
+#	if ( ACME_PACKAGE_CREATOR_MODE )
 #		set( CPACK_NSIS_IGNORE_LICENSE_PAGE off )
 #	else()
 #		set( CPACK_NSIS_IGNORE_LICENSE_PAGE on )
 #	endif()
 #endif()
 include( CPack )
+#[[
+	Ninja-Builds and CPack in MSVC:
+	->	ninja produces the targets "package" and "package_source",
+		but obviously MSVC does not show any options to build those.
+]]
+if ( MSVC AND CMAKE_MAKE_PROGRAM MATCHES "ninja" )
+	message( NOTICE "Ninjabuild in MSVC! => adding custom packaging targets..." )
+	add_custom_target( Ninja_package COMMAND ${CMAKE_MAKE_PROGRAM} "package"
+		DEPENDS acme toacme USES_TERMINAL
+		COMMENT "Create installer package ..."
+	)
+	set_property( TARGET Ninja_package PROPERTY FOLDER "Packaging" )
+	if ( ACME_TEST_SOURCE_PACKAGING )
+		add_custom_target( Ninja_package_source COMMAND ${CMAKE_MAKE_PROGRAM} "package_source"
+			DEPENDS acme toacme USES_TERMINAL
+			COMMENT "Create source installer package ... (never actually worked until now)"
+		)
+		set_property( TARGET Ninja_package_source PROPERTY FOLDER "Packaging" )
+	endif()
+endif()

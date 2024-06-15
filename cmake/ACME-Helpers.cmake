@@ -7,17 +7,15 @@
 	CMake helper functions and macros ...
 ]]
 
-#[[
-	list_filter() - shorthand for "copy to outList, filter outList"
-]]
-	macro( list_filter includeExclude inList outList regExp )
+#[[ list_filter() - shorthand for "copy to outList, filter outList"
+	]]
+	macro( ACME_filter_list includeExclude inList outList regExp )
 		set( ${outList} ${${inList}} )
 		list( FILTER ${outList} ${includeExclude} REGEX ${regExp} )
-	endmacro( list_filter )
-#[[
-	function to output a list (CMake debugging)
-]]
-	function( _out_list list text )
+	endmacro( ACME_filter_list )
+#[[ function to output a list (CMake debugging)
+	]]
+	function( ACME_out_list list text )
 		set( _i 0 )
 		set( _max 100 )
 		list( LENGTH ${list} _l )
@@ -51,13 +49,12 @@
 		else()
 			message( STATUS "${text} - List '${list}' is empty." )
 		endif()
-	endfunction( _out_list )
-#[[
-	function to grep data
-]]
-	function( grep_list LIST VAR RE )
+	endfunction( ACME_out_list )
+#[[ function to grep data
+	]]
+	function( ACME_grep_list LIST VAR RE )
 		set( x ${${LIST}} )
 		list( FILTER x INCLUDE REGEX ${RE} )
 		string( REGEX REPLACE ${RE} "\\1" x "${x}" )
 		set( ${VAR} ${x} PARENT_SCOPE )
-	endfunction( grep_list )
+	endfunction( ACME_grep_list )
