@@ -698,8 +698,6 @@ enum outfile_format outputformat_find(void)
 		return OUTFILE_FORMAT_CBM;
 	else if (strcmp(GlobalDynaBuf->buffer, "apple") == 0)
 		return OUTFILE_FORMAT_APPLE;
-	else if (strcmp(GlobalDynaBuf->buffer, "hex") == 0)
-		return OUTFILE_FORMAT_HEX;
 //	else if (strcmp(GlobalDynaBuf->buffer, "o65") == 0)
 //		return OUTFILE_FORMAT_O65;
 

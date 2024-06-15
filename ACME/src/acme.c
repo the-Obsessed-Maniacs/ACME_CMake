@@ -238,8 +238,7 @@ static void save_output_file(void)
 	}
 	// show output filename _now_ because I do not want to massage it into
 	// every possible perror() call.
-	if ( config.process_verbosity )
-        printf("Writing output file \"%s\".\n", config.output_filename);
+	printf("Writing output file \"%s\".\n", config.output_filename);
 
 	// get memory pointer, block size and load address
 	output_get_result(&body, &amount, &loadaddr);
@@ -248,7 +247,6 @@ static void save_output_file(void)
 	switch (config.outfile_format) {
 	case OUTFILE_FORMAT_UNSPECIFIED:
 	case OUTFILE_FORMAT_PLAIN:
-    case OUTFILE_FORMAT_HEX:
 		headersize = 0;	// no header
 		break;
 	case OUTFILE_FORMAT_CBM:
@@ -302,36 +300,7 @@ static void save_output_file(void)
 		}
 	}
 	if (amount) {
-        boolean bad;
-        if ( config.outfile_format != OUTFILE_FORMAT_HEX )
-            bad = (fwrite(body, amount, 1, fd) != 1);
-        else
-        {
-            // Hex-Listing: this is a textual output format, well suited
-            // for object file inclusion in higher language source files.
-            //  ->  for a header we need the primary source file name,
-            //      preferrably as filename, pathless...
-            const char* fn = toplevel_sources_plat[0];
-            int i = 0;
-            while (fn[i])   // do till end of name -> advance on each separator find.
-                if ((fn[i] == '\\' || fn[i] == '/') && fn[i + 1]) fn += i+1, i = 0;
-                else ++i;
-            bad = fprintf_s(fd, "/*\n\tACME-HEXlisting of '%s'\n*/\n", fn ) < 0;
-            if ( !bad )
-            {
-                int i = 0;
-                while (i < amount)
-                {
-                    bad = fprintf_s(fd, "%s0x%02.2hhx%s",
-                        (i % 16 == 0 ? "\n" : " "),
-                        body[i],
-                        (i < amount - 1 ? "," : "") ) < 0;
-                    if ( bad )  break;
-                    else        ++i;
-                }
-            }
-        }
-        if( bad ) {
+		if (fwrite(body, amount, 1, fd) != 1) {
 			perror("Error: Cannot write to output file");
 			exit(ACME_finalize(EXIT_FAILURE));
 		}
@@ -345,7 +314,6 @@ static void save_output_file(void)
 	switch (config.outfile_format) {
 	case OUTFILE_FORMAT_UNSPECIFIED:
 	case OUTFILE_FORMAT_PLAIN:
-    case OUTFILE_FORMAT_HEX:
 		PLATFORM_SETFILETYPE_PLAIN(config.output_filename);
 		break;
 	case OUTFILE_FORMAT_APPLE:

@@ -6,7 +6,6 @@
 #ifndef platform_C
 #define platform_C
 
-#include "config.h"
 
 // convert UNIX-style path name to local platform style path name and decide
 // whether path is absolute or relative. p points to the terminated input

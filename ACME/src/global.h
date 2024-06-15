@@ -71,19 +71,18 @@ enum debuglevel {
 enum outfile_format {
 	OUTFILE_FORMAT_UNSPECIFIED,	// default (uses "plain" actually)
 	OUTFILE_FORMAT_PLAIN,		// no header, just code
-	OUTFILE_FORMAT_CBM,		    // 16-bit load address, code (default for "!to" pseudo opcode)
-	OUTFILE_FORMAT_APPLE,		// 16-bit load address, 16-bit length, code
-    OUTFILE_FORMAT_HEX,         // produce hex listing, that can be included as bytecode
+	OUTFILE_FORMAT_CBM,		// 16-bit load address, code (default for "!to" pseudo opcode)
+	OUTFILE_FORMAT_APPLE		// 16-bit load address, 16-bit length, code
 };
 // configuration
 struct config {
 	char		pseudoop_prefix;	// '!' or '.'
-	int		    process_verbosity;	// level of additional output
-	boolean		warn_on_indented_labels;// warn if indented label is encountered
+	int		process_verbosity;	// level of additional output
+	boolean		warn_on_indented_labels;	// warn if indented label is encountered
 	boolean		warn_on_type_mismatch;	// use type-checking system
-	int		    warn_bin_mask;	    // bitmask for digit counter of binary literals
-	int		    max_errors;	        // errors before giving up
-	int		    sanity_limit;	    // max recursion depth for "!src" and macro calls, also max number of passes
+	int		warn_bin_mask;	// bitmask for digit counter of binary literals
+	int		max_errors;	// errors before giving up
+	int		sanity_limit;	// max recursion depth for "!src" and macro calls, also max number of passes
 	boolean		format_msvc;		// enabled by --msvc
 	boolean		format_color;		// enabled by --color
 	FILE		*msg_stream;		// defaults to stderr, changed to stdout by --use-stdout
@@ -92,7 +91,7 @@ struct config {
 	boolean		all_warnings_are_errors;	// FALSE, enabled by --strict
 	boolean		test_new_features;	// FALSE, enabled by --test
 	enum dialect	dialect;	// set by --dialect (and --test --test)
-	int		    debuglevel;	    // set by --debuglevel, used by "!debug"
+	int		debuglevel;	// set by --debuglevel, used by "!debug"
 	intval_t	outbuf_size;	// 64K, "--test" changes to 16M
 	const struct cpu_type	*initial_cpu_type;
 	const char	*symbollist_filename;
