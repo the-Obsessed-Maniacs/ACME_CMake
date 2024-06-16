@@ -30,11 +30,13 @@ include( "${CMAKE_CURRENT_LIST_DIR}/ACME-Helpers.cmake" )
 
 	'USES_FILES' is to be used, if your 'MainSourceFile' includes other sources
 	that don't need a Target for themselves - just like headers in CXX.  So, if
-	your 'MainSourceFile' USES_FILES, put them here ...
+	your 'MainSourceFile' USES_FILES, put them here to have the dependency
+	created.
 
-	'ACME_OPTIONS' are a separate topic:
+	'ACME_OPTIONS' are a separate topic.  Every Option ACME accepts should be
+	usable, thus there are CMake counterparts:
 
-	Flags:						(MSVC - flag omitted, read from CMake Variable...)
+	Flags:					(MSVC - flag omitted, read from CMake Variable...)
 		NO_LABEL_INDENT					- trigger "-Wno-label-indent"
 		NO_OLD_FOR						- trigger "-Wno-old-for"
 		NO_BIN_LEN						- trigger "-Wno-bin-len"
@@ -47,11 +49,11 @@ include( "${CMAKE_CURRENT_LIST_DIR}/ACME-Helpers.cmake" )
 	Single Parameter Options:
 		VERBOSE <0..3>					- set ACME verbosity, defaults to "empty"
 		SET_PC <address>				- for relocatable sources - set start address
-		FORMAT <(plain)|(cbm)|			- set ACME output file format, defaults to "plain"
-				(apple)|(hex)>			  -> this preselects the output extension between "prg" and "out"
+		FORMAT <(plain)|(cbm)|(apple)>	- set ACME output file format, defaults to "plain" -> this preselects the output extension between "prg" and "out"
 		OUTPUT_EXTENSION <extension>	- the given extension will be used instead of "out" or "prg"
 		SYMBOL_LIST <extension>			- creates a "--symbollist" file with given extension
 		VICE_LABELS <extension>			- creates a "--vicelabels" file with given extension
+		HEX_LISTING <extension>			- creates a "--hexlisting" file with given extension
 		OUTPUT_DEPS <varName>			- returns the created dependencies in a list
 
 	Multi Parameter Options:
@@ -64,18 +66,20 @@ function( add_ACME_target TargetName MainSourceFile )
 	# parse command line
 	block( SCOPE_FOR VARIABLES PROPAGATE 
 	# propagate the command line and the extensions
-	ACME_FLAGS ACME_EXT_OUT ACME_EXT_SYM ACME_EXT_VICE
+	ACME_FLAGS ACME_EXT_OUT ACME_EXT_SYM ACME_EXT_VICE ACME_EXT_HEX
 	# also propagate, whatever changes variables,
 	ACME_OUTPUT_DEPS ACME_SOURCES
 	# or cannot be put into a command line right away
 	ACME_OBJECT_DEPS ACME_SYMBOL_DEPS )
+		# add the main source file to the sources list
+		list( APPEND ACME_SOURCES ${MainSourceFile} )
 		# prepare argument parsing
-		set( _FORMAT_LIST plain cbm apple hex )
+		set( _FORMAT_LIST plain cbm apple )
 		set( _flg	NO_LABEL_INDENT NO_OLD_FOR NO_BIN_LEN 
 					TYPE_CHECK USE_STDOUT COLOR FULLSTOP TEST )
 		set( _sgl	VERBOSE FORMAT SET_PC OUTPUT_EXTENSION SYMBOL_LIST
-					VICE_LABELS OUTPUT_DEPS )
-		set( _mul	INCLUDE_PATHS DEFINE_SYMBOLS OBJECT_DEPS SYMBOL_DEPS SOURCES )
+					VICE_LABELS HEX_LISTING OUTPUT_DEPS )
+		set( _mul	INCLUDE_PATHS DEFINE_SYMBOLS OBJECT_DEPS SYMBOL_DEPS USES_FILES )
 		cmake_parse_arguments( ACME "${_flg}" "${_sgl}" "${_mul}" ${ARGN} )
 		#[[
 		# check/repair all options - abort if not recoverable
@@ -139,6 +143,8 @@ function( add_ACME_target TargetName MainSourceFile )
 			set( ACME_EXT_SYM ${ACME_SYMBOL_LIST} )
 			# ->	VICE_LABELS <ext> ... make acme spit out a vice_labels file
 			set( ACME_EXT_VICE ${ACME_VICE_LABELS} )
+			# ->	HEX_LISTING <ext> ... make acme spit out a hex_listing file
+			set( ACME_EXT_HEX ${ACME_HEX_LISTING} )
 		# MultiValueArgs:
 			# ->	INCLUDE_PATHS ... are only for ACME, thus transformation into
 			#		ACME_FLAGS neccessary. PATH: also transformation to native!
@@ -151,8 +157,10 @@ function( add_ACME_target TargetName MainSourceFile )
 			foreach ( SYM IN LISTS ACME_DEFINE_SYMBOLS )
 				list( APPEND ACME_FLAGS "-D${SYM}" )
 			endforeach()
-		# add the main source file to the sources list
-		list( PREPEND ACME_SOURCES ${MainSourceFile} )
+			# ->	USES_FILES ... those are all sources ...
+			foreach( F IN LISTS ACME_USES_FILES )
+				list( APPEND ACME_SOURCES ${F} )
+			endforeach()
 	endblock()
 	#
 	#	Step #1: produce sensible output file names,
@@ -175,16 +183,23 @@ function( add_ACME_target TargetName MainSourceFile )
 		# into the ACME command line:
 		if ( ACME_EXT_SYM )
 			cmake_path( REPLACE_EXTENSION ACME_out LAST_ONLY ${ACME_EXT_SYM} OUTPUT_VARIABLE _symFN )
-			list( APPEND ACME_FLAGS "--symbollist" "'${_symFN}'" )
+			list( APPEND ACME_FLAGS "--symbollist" "${_symFN}" )
 			# this is a generated output file -> append to the list of outputs!
 			cmake_path( REPLACE_EXTENSION _out LAST_ONLY ${ACME_EXT_SYM} OUTPUT_VARIABLE _symFN )
 			list( APPEND ACME_OUTPUTS ${_symFN} )
 		endif()
 		if ( ACME_EXT_VICE )
 			cmake_path( REPLACE_EXTENSION ACME_out LAST_ONLY ${ACME_EXT_VICE} OUTPUT_VARIABLE _symFN )
-			list( APPEND ACME_FLAGS "--vicelabels" "'${_symFN}'" )
+			list( APPEND ACME_FLAGS "--vicelabels" "${_symFN}" )
 			# this is a generated output file -> append to the list of outputs!
 			cmake_path( REPLACE_EXTENSION _out LAST_ONLY ${ACME_EXT_VICE} OUTPUT_VARIABLE _symFN )
+			list( APPEND ACME_OUTPUTS ${_symFN} )
+		endif()
+		if ( ACME_EXT_HEX )
+			cmake_path( REPLACE_EXTENSION ACME_out LAST_ONLY ${ACME_EXT_HEX} OUTPUT_VARIABLE _symFN )
+			list( APPEND ACME_FLAGS "--hexlisting" "${_symFN}" )
+			# this is a generated output file -> append to the list of outputs!
+			cmake_path( REPLACE_EXTENSION _out LAST_ONLY ${ACME_EXT_HEX} OUTPUT_VARIABLE _symFN )
 			list( APPEND ACME_OUTPUTS ${_symFN} )
 		endif()
 	#
@@ -233,42 +248,3 @@ function( add_ACME_target TargetName MainSourceFile )
 		set( ${ACME_OUTPUT_DEPS} ${ACME_OUTPUTS} PARENT_SCOPE )
 	endif()
 endfunction( add_ACME_target )
-
-#[[
-	Macro to get all ACME-Options out of a command line
-	-> to be called from inside our functions, simply code-reuse
-	-> defines the variables needed to run ACME during build
-
-	A flag "MSVC" to trigger "--msvc" in the command line has been deliberately
-	omitted.  A simple "if ( MSVC )" is used for auto-detection.
-
-	Flags recognized:
-		NO_LABEL_INDENT					- trigger "-Wno-label-indent"
-		NO_OLD_FOR						- trigger "-Wno-old-for"
-		NO_BIN_LEN						- trigger "-Wno-bin-len"
-		TYPE_CHECK						- trigger "-Wtype-mismatch"
-		USE_STDOUT						- trigger "--use-stdout"
-		COLOR							- trigger "--color"
-		FULLSTOP						- trigger "--fullstop"
-		TEST							- trigger "--test"
-
-	Single Parameter Options:
-		VERBOSE <0..3>					- set ACME verbosity, defaults to "empty"
-		FORMAT <(plain)|(cbm)|(apple)>	- set ACME output file format, defaults to "plain"
-										  -> this preselects the output extension between "prg" and "out"
-		SET_PC <address>				- for relocatable sources - set start address
-		OUTPUT_HEX_LISTING <extension>	- output file will be processed into a hex listing
-										  with the given extension
-		SYMBOL_LIST <extension>			- creates a "--symbollist" file with given extension
-		VICE_LABELS <extension>			- creates a "--vicelabels" file with given extension
-		OUTPUT_DEPS <varName>			- returns the created dependencies (i.e. all created files) in a list
-		OUTPUT_TARGET <varName>			- returns the created target in ${varName}
-
-	Multi Parameter Options:
-		INCLUDE_PATHS					- add include paths via "-I"
-		DEFINE_SYMBOLS					- add definitions via "-D"
-		OBJECT_DEPS						- files, that depend on the generated object file(s)
-		SYMBOL_DEPS						- files, that depend on the generated symbol list file(s)
-]]
-macro( READ_ACME_OPTIONS )
-endmacro( READ_ACME_OPTIONS )

@@ -1,0 +1,67 @@
+
+
+                                 ACME
+
+         ...the ACME Crossassembler for Multiple Environments
+
+                      --- CMake Integration ---
+
+
+This file shall tell you about the ACME CMake Integration.  I.E. how to use ACME
+inside your own CMake build system.
+
+This installation comes with a CMake package "ACME", you should be able to
+simply "find_package( ACME )" to include the ACME-package in your build system.
+If successful, ACME will output its version information to the CMake STATUS
+log.  If not, you will find a CMake Cache variable called ACME_DIR, which is set
+to "ACME_DIR:NOTFOUND" (or something) - in this case simply set the cache entry
+to point to the ACME installation's "cmake" folder and reconfigure your CMake
+Project.
+
+<untested>
+It might also work to git submodule "ACME_CMake" and include ACME from a source
+tree.  Make sure ACME's CMAKE_INSTALL_PREFIX is set up sensibly.
+</untested>
+
+Now that your project found the ACME package, these are the functions you can
+use:
+
+add_ACME_target( <TargetName> <MainSourceFile> 
+	[USES_FILES includedByMain [...] ]
+	[OUTPUT_DEPS <varName>]
+	<ACME_OPTIONS>
+)
+
+This function adds a buildsystem target "TargetName", which inputs ACME with the
+"MainSourceFile".  To have the additional dependencies, you may list other
+assembly sources you know of that "MainSourceFile" includes, using the
+"USES_FILES" option.  To receive a list of output dependencies, use the option
+"OUTPUT_DEPS" - then dependencies are returned in this list.
+
+Furthermore you may choose, which ACME options to set:
+	Flags:	(MSVC - flag intentionally omitted, there's a CMake Variable...)
+		NO_LABEL_INDENT			- trigger "-Wno-label-indent"
+		NO_OLD_FOR				- trigger "-Wno-old-for"
+		NO_BIN_LEN				- trigger "-Wno-bin-len"
+		TYPE_CHECK				- trigger "-Wtype-mismatch"
+		USE_STDOUT				- trigger "--use-stdout"
+		COLOR					- trigger "--color"
+		FULLSTOP				- trigger "--fullstop"
+		TEST					- trigger "--test"
+
+	Single Parameter Options:
+		VERBOSE <0..3>			- set ACME verbosity, defaults to "empty"
+		SET_PC <address>		- for relocatable sources - set start address
+		FORMAT <asACMEaccepts>	- set ACME output file format, defaults to "plain" -> this preselects the output extension between "prg" and "out"
+		OUTPUT_EXT <extension>	- the given extension will be used instead of "out" or "prg"
+		SYMBOL_LIST <extension>	- creates a "--symbollist" file with given extension
+		VICE_LABELS <extension>	- creates a "--vicelabels" file with given extension
+		HEX_LISTING <extension>	- creates a "--hexlisting" file with given extension
+
+	Multi Parameter Options:
+		INCLUDE_PATHS			- add include paths via "-I"
+		DEFINE_SYMBOLS			- add definitions via "-D"
+		OBJECT_DEPS				- files, that depend on the generated object file
+		SYMBOL_DEPS				- files, that depend on the generated symbol list file
+
+This is the first iteration of ACME CMake integration.  Further development underway ;)

@@ -127,7 +127,8 @@ void config_default(struct config *conf)
 	conf->outbuf_size		= 0x10000;	// 64K, "--test" changes to 16M
 	conf->initial_cpu_type		= NULL;
 	conf->symbollist_filename	= NULL;
-	conf->vicelabels_filename	= NULL;
+	conf->vicelabels_filename		= NULL;
+	conf->hexlisting_filename	= NULL;
 	conf->output_filename		= NULL;
 	conf->outfile_format		= OUTFILE_FORMAT_UNSPECIFIED;
 	conf->report_filename		= NULL;
