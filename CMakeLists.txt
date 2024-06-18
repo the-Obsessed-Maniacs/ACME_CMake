@@ -18,11 +18,15 @@ project( ACME
 		 DESCRIPTION "ACME 6502++ cross assembler, code name '${CODENAME}', changed ${CHANGE_DATE} ${CHANGE_YEAR}"
 		 HOMEPAGE_URL "${HOME_PAGE}"
 		 LANGUAGES C CXX )
-# ACME CMake options - mostly for CMake integration and packagin purposes
+# ACME CMake options - mostly for CMake integration and packaging purposes
 	option( ACME_PACKAGE_CREATOR_MODE "what the variable name sais..." off )
 	if( ACME_PACKAGE_CREATOR_MODE AND MSVC AND CMAKE_MAKE_PROGRAM MATCHES "ninja" )
 		option( ACME_TEST_SOURCE_PACKAGING "Add custom 'package_source' target for testing purposes..." off )
 	endif()
+	#if ( ACME_PACKAGE_CREATOR_MODE )
+	#	set( CMAKE_BUILD_TYPE Release )
+	#endif()
+
 #
 # prepare list with ACME's sources
 set( acme_srcs
@@ -100,15 +104,32 @@ source_group( TREE "${CMAKE_CURRENT_SOURCE_DIR}/ACME" PREFIX "" FILES ${SVN_file
 # a try to get the CMake folder into the tree
 # CMAKE_files: go into the installation
 set( CMAKE_files
-	cmake/ACME-Helpers.cmake
-	cmake/ACME-Functions.cmake )
+	cmake/ACME-Helpers.cmake	)
+set( CMI cmake/ACME-CMAKE-INTEGRATION.cmake )
 list( TRANSFORM CMAKE_files PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/" OUTPUT_VARIABLE _cmf )
+# -> generate package Config File from ACME-CMAKE-INTEGRATION.cmake
+# as we write on the ACME-CMAKE-INTEGRATION.cmake, this is not a configure, but a
+# build step with an output!
+string( JOIN "\n" _script 
+	"set( ACME_VERSION @ACME_VERSION@ )"
+	"file( STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/${CMI}"
+	"	ACME_CMAKE_CONFIG NEWLINE_CONSUME )"
+	"file( CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cmake/ACMEConfig.cmake"
+	"	CONTENT \${ACME_CMAKE_CONFIG} @ONLY )" )
+file( CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/makeACMEConfig.cmake
+		CONTENT ${_script} @ONLY )
+add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cmake/ACMEConfig.cmake 
+	COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/makeACMEConfig.cmake
+	MAIN_DEPENDENCY ${CMI}
+	USES_TERMINAL
+	COMMENT "Build ${CMI}."
+)
 add_custom_target( CMAKE_Integration ALL
-	COMMAND ${CMAKE_COMMAND} -E make_directory "cmake"
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_cmf} "cmake"
 	COMMAND_EXPAND_LISTS USES_TERMINAL
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cmake/ACMEConfig.cmake
 	BYPRODUCTS ${CMAKE_files}
-	SOURCES ${_cmf} cmake/ACME-Source-Helpers.cmake
+	SOURCES ${_cmf} ${CMI} cmake/ACME-Source-Helpers.cmake
 	COMMENT "Update CMake binary dir..." )
 #
 # another of those tries: updating docs ...
@@ -120,7 +141,7 @@ add_custom_target( Documentation_Updates ALL
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_df} "docs"
 	COMMAND_EXPAND_LISTS USES_TERMINAL
 	BYPRODUCTS ${DOC_files}
-	SOURCES ${_df}
+	SOURCES ${_df} Readme.md
 	COMMENT "Update Documentation binary dir..." )
 
 #[[
@@ -144,6 +165,8 @@ set( ConfigPackageLocation cmake )
 #-> helps (at least on windows) to quickly find packages
 #	from source builds/local installations
 set( CMAKE_EXPORT_PACKAGE_REGISTRY True )
+set( CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP True )
+include( InstallRequiredSystemLibraries )
 
 # install the ACME add toAcme executables and produce the export
 install( TARGETS acme toacme DESTINATION ${CMAKE_INSTALL_BINDIR} EXPORT ACME_EXPORT )
@@ -161,92 +184,71 @@ install( EXPORT ACME_EXPORT NAMESPACE ACME::
 write_basic_package_version_file(
 	${CMAKE_CURRENT_BINARY_DIR}/cmake/ACMEConfigVersion.cmake
 	COMPATIBILITY AnyNewerVersion )
-# -> generate package Config File
-string( JOIN "\n" ACME_CMAKE_CONFIG
-"#[[\n\tACME CMake Integration"
-"\t======================"
-"\tPackage Version: @ACME_VERSION@\n]]"
-"message( STATUS \"Including ACME ...\" )"
-"include( \"\${CMAKE_CURRENT_LIST_DIR}/ACME-Targets.cmake\" )"
-"include( \"\${CMAKE_CURRENT_LIST_DIR}/ACME-Functions.cmake\" )"
-"execute_process( COMMAND ACME::acme --version ECHO_OUTPUT_VARIABLE )" )
-file( CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cmake/ACMEConfig.cmake
-	CONTENT ${ACME_CMAKE_CONFIG} @ONLY )
-
 # finally install our scripts, functions, and the created files (Config/ConfigVersion)
 install( DIRECTORY
 	${CMAKE_CURRENT_BINARY_DIR}/cmake
 	DESTINATION . )
-#[[
-	MODERN CMAKE says: DON'T DO THIS!
-	=================================
-	# -> create a Targets-Export file
-	export( EXPORT ACME_EXPORT
-		FILE ${CMAKE_CURRENT_BINARY_DIR}/cmake/ACMETargets.cmake
-		NAMESPACE ACME::
-	)
-	# -> create the package configuration file
-	configure_package_config_file( cmake/ACMEConfig.in.cmake
-		${CMAKE_CURRENT_BINARY_DIR}/cmake/ACMEConfig.cmake
-		INSTALL_DESTINATION ${ConfigPackageLocation}
-	)
-]]
+
 #
 # CPack configuration
-include( InstallRequiredSystemLibraries )
-set( CPACK_PACKAGE_VERSION_MAJOR ${ACME_VERSION_MAJOR} )
-set( CPACK_PACKAGE_VERSION_MINOR ${ACME_VERSION_MINOR} )
-set( CPACK_PACKAGE_VENDOR "Sm0rbr0d Software" )
-set( CPACK_PACKAGE_DESCRIPTION ${PROJECT_DESCRIPTION} )
-#set( CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ReadMe.1st" )
-set( CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/ACME/docs/COPYING" )
-set( CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/ACME/docs/Help.txt" )
-set( CPACK_PACKAGE_INSTALL_DIRECTORY "ACME" )
-#-> the following failed!
-#set( CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/${ACME_ICON}" )
-#
-# Shortcuts are not needed, acme is mostly used within build environments ...
-#
-#set( CPACK_PACKAGE_EXECUTABLES acme ACME toacme toACME )
-#set( CPACK_CREATE_DESKTOP_LINKS "" )
-#set( CPACK_DESKTOP_SHORTCUTS "" )
-#set( CPACK_STARTUP_SHORTCUTS "" )
-if( WIN32 )
-	# special NSIS / Windows options
-	set( CPACK_NSIS_ADD_REMOVE True )
-	# NSIS uses the Icon as Installer-Icon.
-	set( CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/${ACME_ICON}" )
-	# but this way around it didn't work:
-	#set( CPACK_NSIS_INSTALLED_ICON_NAME acme.exe )
-	set( CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL True )
-	set( CPACK_NSIS_MODIFY_PATH True )
-	set( CPACK_NSIS_URL_INFO_ABOUT ${HOME_PAGE} )
-	set( CPACK_NSIS_WELCOME_TITLE_3LINES True )
-	set( CPACK_NSIS_BRANDING_TEXT "Packaged by: the Obsessed Maniacs ${CHANGE_YEAR}" )
-	if ( ACME_PACKAGE_CREATOR_MODE )
-		set( CPACK_NSIS_IGNORE_LICENSE_PAGE off )
-	else()
-		set( CPACK_NSIS_IGNORE_LICENSE_PAGE on )
+if( ACME_PACKAGE_CREATOR_MODE )
+	set( CPACK_PACKAGE_VERSION_MAJOR ${ACME_VERSION_MAJOR} )
+	set( CPACK_PACKAGE_VERSION_MINOR ${ACME_VERSION_MINOR} )
+	set( CPACK_PACKAGE_VENDOR "Sm0rbr0d Software" )
+	set( CPACK_PACKAGE_DESCRIPTION ${PROJECT_DESCRIPTION} )
+	#set( CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ReadMe.1st" )
+	set( CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/ACME/docs/COPYING" )
+	set( CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/ACME/docs/Help.txt" )
+	set( CPACK_PACKAGE_INSTALL_DIRECTORY "ACME" )
+	set( CPACK_PACKAGE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} )
+	if( WIN32 )
+		set( CPACK_NSIS_ADD_REMOVE True )	# special NSIS / Windows options
+		set( CPACK_NSIS_MODIFY_PATH True )
+		set( CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL True )
+		set( CPACK_NSIS_WELCOME_TITLE_3LINES True )
+		set( CPACK_NSIS_URL_INFO_ABOUT ${HOME_PAGE} )
+		set( CPACK_NSIS_BRANDING_TEXT "Packaged by: the Obsessed Maniacs ${CHANGE_YEAR}" )
+		# NSIS uses the Icon as Installer-Icon.
+		set( CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/${ACME_ICON}" )
+		# but this way around it didn't work:
+		#set( CPACK_NSIS_INSTALLED_ICON_NAME acme.exe )
+		#if ( ACME_PACKAGE_CREATOR_MODE )
+		#	set( CPACK_NSIS_IGNORE_LICENSE_PAGE off )
+		#else()
+			set( CPACK_NSIS_IGNORE_LICENSE_PAGE on )
+		#endif()
 	endif()
-endif()
-include( CPack )
-#[[
-	Ninja-Builds and CPack in MSVC:
-	->	ninja produces the targets "package" and "package_source",
-		but obviously MSVC does not show any options to build those.
-]]
-if ( MSVC AND CMAKE_MAKE_PROGRAM MATCHES "ninja" )
-	message( NOTICE "Ninjabuild in MSVC! => adding custom packaging targets..." )
-	add_custom_target( Ninja_package COMMAND ${CMAKE_MAKE_PROGRAM} "package"
-		DEPENDS acme toacme USES_TERMINAL
-		COMMENT "Create installer package ..."
-	)
-	if ( ACME_TEST_SOURCE_PACKAGING )
-		set_property( TARGET Ninja_package PROPERTY FOLDER "Packaging" )
-		add_custom_target( Ninja_package_source COMMAND ${CMAKE_MAKE_PROGRAM} "package_source"
+	#
+	# Shortcuts are not needed, acme is mostly used within build environments ...
+	#
+	#set( CPACK_PACKAGE_EXECUTABLES acme ACME toacme toACME )
+	#set( CPACK_CREATE_DESKTOP_LINKS "" )
+	#set( CPACK_DESKTOP_SHORTCUTS "" )
+	#set( CPACK_STARTUP_SHORTCUTS "" )
+	#
+	#-> the following failed!  Don't enable it...
+	#set( CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/${ACME_ICON}" )
+	include( CPack )
+	#[[
+		Ninja-Builds and CPack in MSVC:
+		->	ninja produces the targets "package" and "package_source",
+			but obviously MSVC does not show any options to build those.
+	]]
+	if ( MSVC AND CMAKE_MAKE_PROGRAM MATCHES "ninja" )
+		message( NOTICE "Ninjabuild in MSVC! => adding custom packaging targets..." )
+		add_custom_target( Ninja_package COMMAND ${CMAKE_MAKE_PROGRAM} "package"
+			#COMMAND ${CMAKE_COMMAND} -E copy_if_different 
+			#	"${CMAKE_CURRENT_BINARY_DIR}/ACME-${PROJECT_VERSION}-${CPACK_SYSTEM}.exe"
 			DEPENDS acme toacme USES_TERMINAL
-			COMMENT "Create source installer package ... (never actually worked until now)"
+			COMMENT "Create installer package ..."
 		)
-		set_property( TARGET Ninja_package_source PROPERTY FOLDER "Packaging" )
+		if ( ACME_TEST_SOURCE_PACKAGING )
+			set_property( TARGET Ninja_package PROPERTY FOLDER "Packaging" )
+			add_custom_target( Ninja_package_source COMMAND ${CMAKE_MAKE_PROGRAM} "package_source"
+				DEPENDS acme toacme USES_TERMINAL
+				COMMENT "Create source installer package ... (never actually worked until now)"
+			)
+			set_property( TARGET Ninja_package_source PROPERTY FOLDER "Packaging" )
+		endif()
 	endif()
 endif()

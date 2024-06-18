@@ -402,3 +402,4 @@ FodyWeavers.xsd
 
 # visual studio in-source build trees
 out/
+/_CPack_Packages

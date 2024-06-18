@@ -283,7 +283,7 @@ int ACME_finalize( int exit_code )
 						 fn, loadaddr );
 				i = -1;
 				while ( ++i < amount )
-					fprintf( fd, "%s 0x%02hhx", ( i % 16 ) ? "," : "\n", body[ i ] );
+					fprintf( fd, "%s 0x%02hhx,", ( i % 16 ) ? " " : "\n", body[ i ] );
 				fclose( fd );
 				PLATFORM_SETFILETYPE_TEXT( config.hexlisting_filename );
 			} else {
