@@ -237,8 +237,7 @@ if( ACME_PACKAGE_CREATOR_MODE )
 	if ( MSVC AND CMAKE_MAKE_PROGRAM MATCHES "ninja" )
 		message( NOTICE "Ninjabuild in MSVC! => adding custom packaging targets..." )
 		add_custom_target( Ninja_package COMMAND ${CMAKE_MAKE_PROGRAM} "package"
-			#COMMAND ${CMAKE_COMMAND} -E copy_if_different 
-			#	"${CMAKE_CURRENT_BINARY_DIR}/ACME-${PROJECT_VERSION}-${CPACK_SYSTEM}.exe"
+			COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}-${PROJECT_VERSION}-${CPACK_SYSTEM_NAME}.exe"
 			DEPENDS acme toacme USES_TERMINAL
 			COMMENT "Create installer package ..."
 		)

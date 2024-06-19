@@ -8,14 +8,12 @@
 	----------------------------------------------------------
 	But first - import ACME - this is the package config!
 ]]
-message( STATUS "Including ACME @ACME_VERSION@ CMake Integration:" )
 include( "${CMAKE_CURRENT_LIST_DIR}/ACME-Targets.cmake" )
 include( "${CMAKE_CURRENT_LIST_DIR}/ACME-Helpers.cmake" )
-execute_process( COMMAND ACME::acme --version
-		OUTPUT_VARIABLE _o ERROR_VARIABLE _e
-		ECHO_OUTPUT_VARIABLE ECHO_ERROR_VARIABLE )
-unset( _o )
-unset( _e )
+# I do not understand why using the target ACME::acme does not work in ex_proc!
+get_target_property( ACME_acme ACME::acme LOCATION )
+execute_process( COMMAND ${ACME_acme} "--version" )
+
 #[[
 	ACME can use includes just like any C preprocessor.  So the
 	target of a compile run can depend on multiple sources.
@@ -273,13 +271,8 @@ function( add_ACME_target TargetName MainSourceFile )
 endfunction( add_ACME_target )
 
 function( add_ACME_builders Target )
-	message( STATUS "add_ACME_builders( ${Target} ${ARGN} )" )
-	# parse the rest of the command line:
-	# nothing, yet
-	#set( _flg "" )
-	#set( _sgl "" )
-	#set( _mul "" )
-	#cmake_parse_arguments( ACME "${_flg}" "${_sgl}" "${_mul}" ${ARGN} )
+	list( JOIN ARGN "' '" _srcs)
+	message( STATUS "add_ACME_builders( ${Target} '${_srcs}' )" )
 	# we can continue filtering the Target's SOURCES for ACME files.
 	# +-> by convention, or, let's say, it was asked for by the creator of ACME
 	#	Marco Baye to name ACME-sources with the extension ".a", we can simply
@@ -322,8 +315,6 @@ function( add_ACME_builders Target )
 			endif()
 			endwhile()
 			unset( _done )
-		ACME_out_list( ACME_FLAGS "  ACME_FLAGS=" )
-		ACME_out_list( _EXTS "  ACME_EXTS=" )
 		# now the command line is reduced to flags and settings
 		# also, the variables OUT_EXT, VICE_EXT, HEX_EXT and SYM_EXT
 		# are either set, or unset.
@@ -332,8 +323,6 @@ function( add_ACME_builders Target )
 		foreach( _f IN LISTS _sl )
 			ACME_get_includes( ${_f} )
 		endforeach()
-		ACME_out_list( SRC_inc "  ACME source includes" )
-		ACME_out_list( BIN_inc "  ACME binary dependencies" )
 		# any sources, that are also included, don't need an own build command,
 		# so remove them from list
 		foreach( _f IN LISTS SRC_INC )
@@ -344,7 +333,7 @@ function( add_ACME_builders Target )
 			cmake_path( GET _f STEM LAST_ONLY _fs )
 			list( APPEND _ssl ${_fs} )
 		endforeach()
-		ACME_out_list( _ssl "  ACME sources (STEMs only) considered:" )
+		ACME_out_list( _ssl "  ACME sources considered:" )
 		# now the list of sources should resemble the needed ACME commands.
 		#	->	we should be able to determine now, which project source files
 		#		depend on any of the outputs.  We need to filter all c/pp source
@@ -357,7 +346,6 @@ function( add_ACME_builders Target )
 		#			is created, the source files referring to the output are added
 		#
 			ACME_filter_list( INCLUDE _srcs _tsl ".*(h(pp)?)|(c(c|(pp)|(xx))?)$" )
-			#ACME_out_list( _tsl "Files to check for #includes" )
 			foreach( _f IN LISTS _tsl )
 				# only read include lines
 				file( STRINGS ${_f} _s REGEX "^[ \t]*[#][ \t]*include[ \t]*" )
@@ -365,7 +353,7 @@ function( add_ACME_builders Target )
 				#ACME_out_list( _s "considered lines of ${_fn}" )
 				foreach( _sln IN LISTS _s )
 					# check every include line -> grab filename
-					string( REGEX REPLACE ".*[\"<]([^\">]+)[\">]" "\\1" _sln "${_sln}" )
+					string( REGEX REPLACE ".*[\"<]([^\">]+)[\">].*" "\\1" _sln "${_sln}" )
 					cmake_path( GET _sln EXTENSION LAST_ONLY _slnx )
 					#message( STATUS "check/replacement: ${_sln} -> ${_slnx}" )
 					if( _slnx IN_LIST _EXTS )
@@ -383,7 +371,7 @@ function( add_ACME_builders Target )
 				endforeach()
 			endforeach()
 			list( REMOVE_DUPLICATES _rssl )
-			ACME_out_list( _rssl "  ACME stems referenced:" )
+			ACME_out_list( _rssl "  ACME sources referenced:" )
 		#
 		# Now we know which stems are referenced.  These should be the ACME sources, that
 		# only need a custom command creating the outputs.  Let's work those off, first...
@@ -396,11 +384,9 @@ function( add_ACME_builders Target )
 					break()
 				endif()
 			endforeach()
-			message( STATUS "${_fs}  <= work on stem begins by creating input and output file names:"
-							"\n source=${_afn}" )
+
 			ACME_PREPARE_BUILD_COMMAND()
-			ACME_out_list( _obj " objects to generate" )
-			ACME_out_list( _byp " byproducts to generate" )
+
 			# now we can add the custom command ...
 			add_custom_command( OUTPUT ${_obj}
 				COMMAND ACME::acme ${ACME_FLAGS} ${ACME_FNLIST}
@@ -409,14 +395,21 @@ function( add_ACME_builders Target )
 				SOURCES ${SRC_inc} ${BIN_inc} ${_afn}
 				COMMAND_EXPAND_LISTS USES_TERMINAL
 				COMMENT "ACME: assemble ${_fs}" )
+
 			# and make the dependent files depend on their objects
+			set( _refs "" )
 			foreach( _ex IN LISTS _EXTS )
 				if( DEFINED ACME_${_fs}${_ex}_REFS )
-					ACME_out_list( ACME_${_fs}${_ex}_REFS "refs of ${_fs}${_ex}" )
 					set_property( SOURCE ${ACME_${_fs}${_ex}_REFS}
 						APPEND PROPERTY OBJECT_DEPENDS ${_obj} )
+					list( TRANSFORM ACME_${_fs}${_ex}_REFS REPLACE [=[(.*/)]=] "" )
+					list( APPEND _refs ${ACME_${_fs}${_ex}_REFS} )
 				endif()
 			endforeach()
+			if ( _refs )
+				ACME_out_list( _refs "  '${_fs}' referenced in:" )
+			endif()
+
 			# finally add extra include dir
 			cmake_path( GET _ofs PARENT_PATH _inc )
 			target_include_directories( ${Target} PUBLIC ${_inc} )
@@ -428,8 +421,6 @@ function( add_ACME_builders Target )
 		foreach( _afn IN LISTS _sl )
 			# prepare the same variables as used above ...
 			cmake_path( GET _afn STEM LAST_ONLY _fs )
-			message( STATUS "${_fs}  <= work on stem begins by creating input and output file names:"
-							"\n source=${_afn}" )
 			ACME_PREPARE_BUILD_COMMAND()
 			# in this case, all objects are byproducts.  Anyhow, the last object
 			# created may be a listing or whatever, so we'll make the last byproduct
@@ -437,8 +428,6 @@ function( add_ACME_builders Target )
 			list( POP_BACK _byp _x )
 			list( APPEND _obj ${_x} )
 			unset( _x )
-			ACME_out_list( _obj " objects to generate" )
-			ACME_out_list( _byp " byproducts to generate" )
 			# now we can add the custom command ...
 			add_custom_command( OUTPUT ${_obj}
 				COMMAND ACME::acme ${ACME_FLAGS} ${ACME_FNLIST}
@@ -454,6 +443,7 @@ function( add_ACME_builders Target )
 			list( APPEND _all_fns ${_afn} )
 			list( APPEND _all_objs ${_obj} )
 			list( APPEND _all_byps ${_byp} )
+			message( STATUS "  '${_fs}' unreferenced -> custom command created.")
 		endforeach()
 
 		if ( _all_fns OR _all_objs OR _all_byps )	# if we have a list of 'lone' ACME objects
@@ -463,6 +453,8 @@ function( add_ACME_builders Target )
 				SOURCES ${_all_fns}
 				COMMENT "building lonesome ACME source files ..." )
 			add_dependencies( ${Target} ACME_lone_objects )
+			message( STATUS "  Created 'ACME_lone_objects' Target for building unreferenced ACME files.")
 		endif()
+		message( STATUS "add_ACME_builders - all done!" )
 	endif()
 endfunction( add_ACME_builders )

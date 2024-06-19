@@ -7,24 +7,24 @@
 	CMake helper functions and macros ...
 ]]
 
-#[[ list_filter() - shorthand for "copy to outList, filter outList"
+#[[ ACME_filter_list() - shorthand for "copy to outList, filter outList"
 	]]
 	macro( ACME_filter_list includeExclude inList outList regExp )
 		set( ${outList} ${${inList}} )
 		list( FILTER ${outList} ${includeExclude} REGEX ${regExp} )
 	endmacro( ACME_filter_list )
-#[[ function to output a list (CMake debugging)
+#[[ ACME_out_list - function to output a list (CMake debugging)
 	]]
 	function( ACME_out_list list text )
 		set( _i 0 )
 		set( _max 100 )
-		list( LENGTH ${list} _l )
+		list( LENGTH "${list}" _l )
 		if( _l )
 			set( _line "${text} " )
 			string( LENGTH "${_line}" _ll )
 			while( _i LESS _l )
 				list( GET ${list} ${_i} _it )
-				string( LENGTH ${_it} _itl )
+				string( LENGTH "${_it}" _itl )
 				math( EXPR _il "${_ll}+2+${_itl}" )
 				if( _i EQUAL 0 AND _il GREATER_EQUAL _max )	# first item too long?
 					message( STATUS ${text} )	# +-> output text first
@@ -50,7 +50,7 @@
 			message( STATUS "${text} - List '${list}' is empty." )
 		endif()
 	endfunction( ACME_out_list )
-#[[ function to grep data
+#[[ ACME_grep_list - what the name says
 	]]
 	function( ACME_grep_list LIST VAR RE )
 		set( x ${${LIST}} )
@@ -65,18 +65,22 @@
 		unset( _SRC PARENT_SCOPE )
 		unset( _BIN PARENT_SCOPE )
 		# read source file
-		file( STRINGS ${_f} _c )
+		file( STRINGS "${_f}" _c )
 		# get abs. dir
 		cmake_path( GET _f PARENT_PATH _dir )
 		# get acme-includes of file
 		# -> get only local include lines (i.e. !src "include.a" )
-		ACME_filter_list( INCLUDE _c _SRC "^[ \t]*[!](src)|(source)[ \t]+\".*" )
-		list( TRANSFORM _SRC REPLACE ".*\"([^\"]+)\".*" "\\1" )
-		list( TRANSFORM _SRC PREPEND "${_dir}/" )
+		ACME_filter_list( INCLUDE _c _SRC [=[!((src)|(source))[ \t]+["]]=] )
+		if ( _SRC )
+			list( TRANSFORM _SRC REPLACE "^.*\"([^\"]+)\".*$" "\\1" )
+			list( TRANSFORM _SRC PREPEND "${_dir}/" )
+		endif()
 		# get acme-bin-includes of file
-		ACME_filter_list( INCLUDE _c _BIN "^[ \t]*[!](bin)|(binary)[ \t]+\".*" )
-		list( TRANSFORM _BIN REPLACE ".*\"([^\"]+)\".*" "\\1" )
-		list( TRANSFORM _BIN PREPEND "${_dir}/" )
+		ACME_filter_list( INCLUDE _c _BIN [=[!((bin)|(binary))[ \t]+["]]=] )
+		if ( _BIN )
+			list( TRANSFORM _BIN REPLACE "^.*\"([^\"]+)\".*$" "\\1" )
+			list( TRANSFORM _BIN PREPEND "${_dir}/" )
+		endif()
 		return( PROPAGATE _SRC _BIN )
 	endfunction( ACME_find_inc )
 
