@@ -385,19 +385,22 @@ function( add_ACME_builders Target )
 				endif()
 			endforeach()
 
+			# no reuse of old objects and byproducts ...
+			unset( _obj )
+			unset( _byp )
 			ACME_PREPARE_BUILD_COMMAND()
 
 			# now we can add the custom command ...
 			add_custom_command( OUTPUT ${_obj}
 				COMMAND ACME::acme ${ACME_FLAGS} ${ACME_FNLIST}
 				MAIN_DEPENDENCY ${_afn}
-				BYPRODUCTS ${_byp}
+				BYPRODUCTS "${_byp}"
 				SOURCES ${SRC_inc} ${BIN_inc} ${_afn}
 				COMMAND_EXPAND_LISTS USES_TERMINAL
 				COMMENT "ACME: assemble ${_fs}" )
 
 			# and make the dependent files depend on their objects
-			set( _refs "" )
+			unset( _refs )
 			foreach( _ex IN LISTS _EXTS )
 				if( DEFINED ACME_${_fs}${_ex}_REFS )
 					set_property( SOURCE ${ACME_${_fs}${_ex}_REFS}
@@ -419,15 +422,17 @@ function( add_ACME_builders Target )
 
 		# now if any sources are left over, create their custom command at least
 		foreach( _afn IN LISTS _sl )
+			# no reuse of old objects and byproducts ...
+			unset( _obj )
+			unset( _byp )
 			# prepare the same variables as used above ...
 			cmake_path( GET _afn STEM LAST_ONLY _fs )
 			ACME_PREPARE_BUILD_COMMAND()
 			# in this case, all objects are byproducts.  Anyhow, the last object
 			# created may be a listing or whatever, so we'll make the last byproduct
 			# the first object.
-			list( POP_BACK _byp _x )
-			list( APPEND _obj ${_x} )
-			unset( _x )
+			list( POP_BACK _byp _obj )
+
 			# now we can add the custom command ...
 			add_custom_command( OUTPUT ${_obj}
 				COMMAND ACME::acme ${ACME_FLAGS} ${ACME_FNLIST}

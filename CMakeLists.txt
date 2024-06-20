@@ -201,15 +201,16 @@ if( ACME_PACKAGE_CREATOR_MODE )
 	set( CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/ACME/docs/Help.txt" )
 	set( CPACK_PACKAGE_INSTALL_DIRECTORY "ACME" )
 	set( CPACK_PACKAGE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} )
-	if( WIN32 )
-		set( CPACK_NSIS_ADD_REMOVE True )	# special NSIS / Windows options
-		set( CPACK_NSIS_MODIFY_PATH True )
+	if( WIN32 )	# special NSIS / Windows options
+		set( CPACK_NSIS_ADD_REMOVE True )
+		set( CPACK_NSIS_MODIFY_PATH False )
 		set( CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL True )
 		set( CPACK_NSIS_WELCOME_TITLE_3LINES True )
 		set( CPACK_NSIS_URL_INFO_ABOUT ${HOME_PAGE} )
 		set( CPACK_NSIS_BRANDING_TEXT "Packaged by: the Obsessed Maniacs ${CHANGE_YEAR}" )
 		# NSIS uses the Icon as Installer-Icon.
 		set( CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/${ACME_ICON}" )
+		set( CPACK_NSIS_MUI_UNIICON "${CMAKE_SOURCE_DIR}/${ACME_ICON}" )
 		# but this way around it didn't work:
 		#set( CPACK_NSIS_INSTALLED_ICON_NAME acme.exe )
 		#if ( ACME_PACKAGE_CREATOR_MODE )
